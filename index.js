@@ -24,6 +24,51 @@ app.get('/api/hello', function (req, res) {
   res.json({ greeting: 'hello API' });
 });
 
+// Temporary in-memory database
+const urls = [];
+let counter = 1;
+
+// ==========================================
+// POST: /api/shorturl
+// ==========================================
+app.post('/api/shorturl', (req, res) => {
+  const originalUrl = req.body.url;
+  const hostname = urlParser.parse(originalUrl).hostname;
+
+  // Validate format
+  if (!hostname || !/^https?:\/\//i.test(originalUrl)) {
+    return res.json({ error: 'invalid url' });
+  }
+
+  // Verify domain exists
+  dns.lookup(hostname, (err) => {
+    if (err) {
+      return res.json({ error: 'invalid url' });
+    }
+
+    // Create new entry
+    const shortUrl = counter++;
+    urls.push({ original_url: originalUrl, short_url: shortUrl });
+
+    res.json({ original_url: originalUrl, short_url: shortUrl });
+  });
+});
+
+// ==========================================
+// GET: /api/shorturl/:short_url
+// ==========================================
+app.get('/api/shorturl/:short_url', (req, res) => {
+  const shortUrl = parseInt(req.params.short_url);
+  const found = urls.find(entry => entry.short_url === shortUrl);
+
+  if (found) {
+    res.redirect(found.original_url);
+  } else {
+    res.json({ error: 'No short URL found for given input' });
+  }
+});
+
+
 // listen for requests :)
 var listener = app.listen(process.env.PORT || 3000, function () {
   console.log('Your app is listening on port ' + listener.address().port);
